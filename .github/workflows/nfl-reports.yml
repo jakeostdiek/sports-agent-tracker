@@ -1,0 +1,46 @@
+name: NFL Weekly Reports
+
+on:
+  # Runs multiple times a day so newly finished games get picked up within
+  # hours, not days. NFL games mostly finish Thu/Sun/Mon, so this could be
+  # narrowed to those days later if Actions minutes usage becomes a concern
+  # -- for now it's simple and the script is a cheap no-op when there's
+  # nothing new (see scripts/run_scheduled.py).
+  schedule:
+    - cron: "0 */4 * * *"   # every 4 hours, all week
+  # Lets you manually trigger a run from the GitHub Actions tab, useful for
+  # testing without waiting for the next scheduled trigger.
+  workflow_dispatch:
+
+# Needed so the workflow can commit new report files + processed_games.json
+# back to the repo.
+permissions:
+  contents: write
+
+jobs:
+  generate-reports:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run scheduled report generation
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: uv run python scripts/run_scheduled.py
+
+      - name: Commit and push new reports
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add reports/ data/processed_games.json
+          git diff --staged --quiet || git commit -m "Auto-generate reports [skip ci]"
+          git push
