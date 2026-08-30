@@ -68,6 +68,7 @@ def write_report(season: int, week: int, game_report: dict) -> None:
 def main() -> int:
     today = date.today()
     season = get_current_season(today)
+    PROCESSED_GAMES_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     if season is None:
         print(f"{today}: NFL offseason, nothing to check.")
